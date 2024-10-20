@@ -18,7 +18,11 @@ def process_image():
         image = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
         
         gray_image = preprocessing_service.grayscale(image)
-        preprocess_image = preprocessing_service.deskew_image(gray_image)
+        deskew_image = preprocessing_service.deskew_image(gray_image)
+        # median_image = preprocessing_service.median_filter(deskew_image)
+        clahe_image = preprocessing_service.clahe(deskew_image)
+        sharpening_image = preprocessing_service.sharpening_filter(clahe_image)
+        preprocess_image = preprocessing_service.otsu_thresholding(sharpening_image)
         
         is_success, buffer = cv2.imencode('.jpg', preprocess_image)
         io_buf = io.BytesIO(buffer)
