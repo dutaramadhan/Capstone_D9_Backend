@@ -18,7 +18,7 @@ def process_image():
         image = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
         
         gray_image = preprocessing_service.grayscale(image)
-        preprocess_image = preprocessing_service.grayscale(gray_image)
+        preprocess_image = preprocessing_service.deskew_image(gray_image)
         
         is_success, buffer = cv2.imencode('.jpg', preprocess_image)
         io_buf = io.BytesIO(buffer)
