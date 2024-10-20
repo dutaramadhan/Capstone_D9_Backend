@@ -5,8 +5,16 @@ import cv2
 import math
 
 def grayscale(image):
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return gray_image
+    if image.ndim != 3 or image.shape[2] != 3:
+        raise ValueError("Input image must be a color image with 3 channels (BGR).")
+
+    B = image[:, :, 0].astype(np.float32)
+    G = image[:, :, 1].astype(np.float32)
+    R = image[:, :, 2].astype(np.float32)
+
+    Y = 0.299 * R + 0.587 * G + 0.114 * B
+    
+    return Y.astype(np.uint8)
 
 def deskew_image(image):
      # ubah tiap pixel 'edge' ke dimensi (rho, theta)
