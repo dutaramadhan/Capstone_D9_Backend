@@ -48,14 +48,14 @@ def deskew_image(image):
                           flags=cv2.INTER_LINEAR,
                           borderMode=cv2.BORDER_REPLICATE)
 
-def median_filter(image, kernel_size=3, padding_mode='constant'):
-    pad_size = kernel_size // 2
-    padded_image = np.pad(image, pad_size, mode=padding_mode)
+# def median_filter(image, kernel_size=3, padding_mode='constant'):
+#     pad_size = kernel_size // 2
+#     padded_image = np.pad(image, pad_size, mode=padding_mode)
 
-    window_shape = (kernel_size, kernel_size)
-    windows = sliding_window_view(padded_image, window_shape)
+#     window_shape = (kernel_size, kernel_size)
+#     windows = sliding_window_view(padded_image, window_shape)
 
-    return np.median(windows, axis=(-1, -2)).astype(np.uint8)
+#     return np.median(windows, axis=(-1, -2)).astype(np.uint8)
 
 def clahe(image, clip_limit=2.0, grid_size=(8, 8)):
     # Mendapatkan ukuran gambar
@@ -114,53 +114,49 @@ def sharpening_filter(image):
 
     return sharpened_image
 
-# def otsu_thresholding(image):
-#     # Mendapatkan histogram dari citra
-#     hist, bins = np.histogram(image.flatten(), bins=256, range=[0,256])
-    
-#     # Probabilitas untuk tiap level intensitas
-#     pixel_total = image.size
-#     prob = hist / pixel_total
-    
-#     # Inisialisasi variabel yang dibutuhkan
-#     current_max = 0
-#     threshold = 0
-#     mean_weight1 = 0
-#     mean_weight2 = 0
-    
-#     # Variabel untuk akumulasi
-#     sum_all = np.dot(np.arange(256), hist)
-#     sumB = 0
-#     weightB = 0
-#     weightF = 0
-    
-#     # Loop untuk menghitung varians antar-kelas
-#     for t in range(256):
-#         weightB += hist[t]  # Bobot latar belakang
-#         weightF = pixel_total - weightB  # Bobot latar depan
-        
-#         if weightB == 0 or weightF == 0:
-#             continue
-        
-#         sumB += t * hist[t]  # Rata-rata latar belakang
-#         meanB = sumB / weightB
-#         meanF = (sum_all - sumB) / weightF  # Rata-rata latar depan
-        
-#         # Hitung varians antar-kelas
-#         var_between = weightB * weightF * (meanB - meanF) ** 2
-        
-#         # Cek apakah varians ini lebih besar dari varians maksimal sebelumnya
-#         if var_between > current_max:
-#             current_max = var_between
-#             threshold = t
-    
-#     # Terapkan threshold pada gambar
-#     otsu_image = image.copy()
-#     otsu_image[image > threshold] = 255
-#     otsu_image[image <= threshold] = 0
-    
-#     return otsu_image
-
 def otsu_thresholding(image):
-    img_otsu = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    return img_otsu
+    # Mendapatkan histogram dari citra
+    hist, bins = np.histogram(image.flatten(), bins=256, range=[0,256])
+    
+    # Probabilitas untuk tiap level intensitas
+    pixel_total = image.size
+    prob = hist / pixel_total
+    
+    # Inisialisasi variabel yang dibutuhkan
+    current_max = 0
+    threshold = 0
+    mean_weight1 = 0
+    mean_weight2 = 0
+    
+    # Variabel untuk akumulasi
+    sum_all = np.dot(np.arange(256), hist)
+    sumB = 0
+    weightB = 0
+    weightF = 0
+    
+    # Loop untuk menghitung varians antar-kelas
+    for t in range(256):
+        weightB += hist[t]  # Bobot latar belakang
+        weightF = pixel_total - weightB  # Bobot latar depan
+        
+        if weightB == 0 or weightF == 0:
+            continue
+        
+        sumB += t * hist[t]  # Rata-rata latar belakang
+        meanB = sumB / weightB
+        meanF = (sum_all - sumB) / weightF  # Rata-rata latar depan
+        
+        # Hitung varians antar-kelas
+        var_between = weightB * weightF * (meanB - meanF) ** 2
+        
+        # Cek apakah varians ini lebih besar dari varians maksimal sebelumnya
+        if var_between > current_max:
+            current_max = var_between
+            threshold = t
+    
+    # Terapkan threshold pada gambar
+    otsu_image = image.copy()
+    otsu_image[image > threshold] = 255
+    otsu_image[image <= threshold] = 0
+    
+    return otsu_image
