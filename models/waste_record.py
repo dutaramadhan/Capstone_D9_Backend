@@ -1,1 +1,0 @@
-# model untuk data timbangan
