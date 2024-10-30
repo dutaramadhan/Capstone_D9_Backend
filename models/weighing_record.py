@@ -16,7 +16,8 @@ class TruckWeighing(db.Model):
     second_weight = db.Column(db.Float)
     net_weight = db.Column(db.Float)
     status = db.Column(db.String(20), default='draft')
-    weighing_time = db.Column(db.DateTime, default=datetime.utcnow)
+    first_weighing_time = db.Column(db.DateTime, default=datetime.now)
+    second_weighing_time = db.Column(db.DateTime)
 
     def calculate_net_weight(self):
         if self.first_weight is not None and self.second_weight is not None:
