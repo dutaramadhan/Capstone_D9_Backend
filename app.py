@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from config import Config
 from controllers.ocr_controller import ocr_controller
 from controllers.weighing_controller import weighing_controller
+from controllers.login_controller import login_controller
 from models.weighing_record import db
 from flask_cors import CORS
 import os
@@ -16,6 +17,7 @@ def create_app():
     
     app.register_blueprint(ocr_controller)
     app.register_blueprint(weighing_controller)
+    app.register_blueprint(login_controller)
 
     @app.route('/')
     def info():
