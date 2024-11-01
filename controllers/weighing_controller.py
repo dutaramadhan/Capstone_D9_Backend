@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, make_response
 from models.weighing_record import db, TruckWeighing
+
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import BadRequest, NotFound
