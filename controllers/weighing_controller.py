@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, make_response
 from models.weighing_record import db, TruckWeighing
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import BadRequest, NotFound
 from reportlab.lib.pagesizes import A4
@@ -122,15 +122,18 @@ def delete_weighing(id):
 @weighing_controller.route('/api/weighing', methods=['GET'])
 def get_all_weighings():
     try:
-        weighings = TruckWeighing.query.all()
-        
-        if not weighings:
+        page = request.args.get('page', 1, type=int)  
+        per_page = request.args.get('per_page', 10, type=int) 
+
+        weighings = TruckWeighing.query.order_by(TruckWeighing.second_weighing_time.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
+        if weighings.total == 0:
             return jsonify({
                 'message': 'No weighing records found.',
                 'status_code': 200,
                 'data': []
             }), 200
-    
+
         weighing_list = [{
             'id': weighing.id,
             'license_plate': weighing.license_plate,
@@ -143,12 +146,18 @@ def get_all_weighings():
             'status': weighing.status,
             'first_weighing_time': weighing.first_weighing_time,
             'second_weighing_time': weighing.second_weighing_time
-        } for weighing in weighings]
+        } for weighing in weighings.items]
 
         return jsonify({
             'message': 'Weighing records retrieved successfully!',
             'status_code': 200,
-            'data': weighing_list
+            'data': weighing_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': weighings.total,
+                'total_pages': weighings.pages,
+            }
         }), 200
 
     except SQLAlchemyError as e:
@@ -205,7 +214,7 @@ def generate_weighing_pdf(id):
 
         response = make_response(pdf_buffer.read())
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename=nota_penimbangan_{id}.pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=nota_penimbangan_{id}.pdf'
         return response
 
     except NotFound as e:
@@ -285,3 +294,41 @@ def get_filtered_weighings():
         return jsonify({'message': 'Failed to retrieve weighing records.', 'error': str(e), 'status_code': 500}), 500
     except Exception as e:
         return jsonify({'message': 'An unexpected error occurred.', 'error': str(e)}), 500
+    
+@weighing_controller.route('/api/weighing/total_waste', methods=['GET'])
+def get_total_waste_per_day():
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+
+        total_waste = (
+            db.session.query(
+                db.func.date(TruckWeighing.first_weighing_time).label('date'),
+                db.func.sum(TruckWeighing.net_weight).label('total_weight')
+            )
+            .filter(TruckWeighing.first_weighing_time >= start_date)
+            .filter(TruckWeighing.first_weighing_time <= end_date)
+            .group_by(db.func.date(TruckWeighing.first_weighing_time))
+            .order_by(db.func.date(TruckWeighing.first_weighing_time))
+            .all()
+        )
+
+        if not total_waste:
+            return jsonify({
+                'message': 'No weighing records found for the last month.',
+                'status_code': 200,
+                'data': []
+            }), 200
+        
+        waste_data = [{'date': record.date.strftime('%d-%m-%Y'), 'total_weight': record.total_weight} for record in total_waste]
+
+        return jsonify({
+            'message': 'Total waste per day retrieved successfully!',
+            'status_code': 200,
+            'data': waste_data
+        }), 200
+
+    except SQLAlchemyError as e:
+        return jsonify({'message': 'Failed to retrieve total waste records.', 'error': str(e), 'status_code': 500}), 500
+    except Exception as e:
+        return jsonify({'message': 'An unexpected error occurred.', 'error': str(e), 'status_code': 500}), 500
