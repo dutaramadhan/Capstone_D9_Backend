@@ -7,6 +7,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import io
+from sqlalchemy import extract
 
 weighing_controller = Blueprint('weighing_controller', __name__)
 
@@ -122,17 +123,35 @@ def delete_weighing(id):
 @weighing_controller.route('/api/weighing', methods=['GET'])
 def get_all_weighings():
     try:
-        page = request.args.get('page', 1, type=int)  
-        per_page = request.args.get('per_page', 10, type=int) 
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        start_date = request.args.get('start_date', None)
+        end_date = request.args.get('end_date', None)
 
-        weighings = TruckWeighing.query.order_by(TruckWeighing.second_weighing_time.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        query = TruckWeighing.query
+
+        if start_date:
+            try:
+                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+                query = query.filter(TruckWeighing.first_weighing_time >= start_date_obj)
+            except ValueError:
+                return jsonify({'message': 'Invalid start_date format. Use YYYY-MM-DD format.'}), 400
+
+        if end_date:
+            try:
+                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+                query = query.filter(TruckWeighing.first_weighing_time <= end_date_obj)
+            except ValueError:
+                return jsonify({'message': 'Invalid end_date format. Use YYYY-MM-DD format.'}), 400
+
+        weighings = query.order_by(TruckWeighing.second_weighing_time.desc()).paginate(page=page, per_page=per_page, error_out=False)
 
         if weighings.total == 0:
             return jsonify({
                 'message': 'No weighing records found.',
-                'status_code': 200,
+                'status_code': 400,
                 'data': []
-            }), 200
+            }), 400
 
         weighing_list = [{
             'id': weighing.id,
@@ -164,7 +183,39 @@ def get_all_weighings():
         return jsonify({'message': 'Failed to retrieve weighing records.', 'error': str(e)}), 500
     except Exception as e:
         return jsonify({'message': 'An unexpected error occurred.', 'error': str(e)}), 500
-    
+
+@weighing_controller.route('/api/weighing/<id>', methods=['GET'])
+def get_weighing_by_id( id):
+    try:
+        weighing = TruckWeighing.query.get(id)
+        if not weighing:
+            raise NotFound(f"Weighing record with ID {id} not found.")
+        weighing_data = {
+            'id': weighing.id,
+            'license_plate': weighing.license_plate,
+            'supplier': weighing.supplier,
+            'driver_name': weighing.driver_name,
+            'notes': weighing.notes,
+            'first_weight': weighing.first_weight,
+            'second_weight': weighing.second_weight,
+            'net_weight': weighing.net_weight,
+            'status': weighing.status,
+            'first_weighing_time': weighing.first_weighing_time,
+            'second_weighing_time': weighing.second_weighing_time
+        } 
+        return jsonify({
+            'message': 'Weighing records retrieved successfully!',
+            'status_code': 200,
+            'data': weighing_data,
+        }), 200
+
+    except NotFound as e:
+        return jsonify({'message': 'Not found.', 'error': str(e), 'status_code': 404}), 404
+    except SQLAlchemyError as e:
+        return jsonify({'message': 'Failed to generate PDF.', 'error': str(e), 'status_code': 500}), 500
+    except Exception as e:
+        return jsonify({'message': 'An unexpected error occurred.', 'error': str(e)}), 500
+
 @weighing_controller.route('/api/weighing/<id>/pdf', methods=['GET'])
 def generate_weighing_pdf(id):
     try:
@@ -223,80 +274,9 @@ def generate_weighing_pdf(id):
         return jsonify({'message': 'Failed to generate PDF.', 'error': str(e), 'status_code': 500}), 500
     except Exception as e:
         return jsonify({'message': 'An unexpected error occurred.', 'error': str(e)}), 500
-    
-@weighing_controller.route('/api/weighing/filter', methods=['GET'])
-def get_filtered_weighings():
-    try:
-        date = request.args.get('date')
-        month = request.args.get('month')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        query = TruckWeighing.query
 
-        if date:
-            try:
-                specific_date = datetime.strptime(date, '%Y-%m-%d')
-                query = query.filter(db.func.date(TruckWeighing.first_weighing_time) == specific_date.date())
-            except ValueError:
-                raise BadRequest("Invalid date format. Use YYYY-MM-DD.")
-        
-        elif month:
-            try:
-                specific_month = datetime.strptime(month, '%Y-%m')
-                query = query.filter(
-                    db.func.extract('year', TruckWeighing.first_weighing_time) == specific_month.year,
-                    db.func.extract('month', TruckWeighing.first_weighing_time) == specific_month.month
-                )
-            except ValueError:
-                raise BadRequest("Invalid month format. Use YYYY-MM.")
-        
-        elif start_date and end_date:
-            try:
-                start = datetime.strptime(start_date, '%Y-%m-%d')
-                end = datetime.strptime(end_date, '%Y-%m-%d')
-                query = query.filter(TruckWeighing.first_weighing_time >= start, TruckWeighing.first_weighing_time <= end)
-            except ValueError:
-                raise BadRequest("Invalid date format. Use YYYY-MM-DD for start_date and end_date.")
-        
-        weighings = query.all()
-
-        if not weighings:
-            return jsonify({
-                'message': 'No weighing records found.',
-                'status_code': 200,
-                'data': []
-            }), 200
-        
-        weighing_list = [{
-            'id': weighing.id,
-            'license_plate': weighing.license_plate,
-            'supplier': weighing.supplier,
-            'driver_name': weighing.driver_name,
-            'notes': weighing.notes,
-            'first_weight': weighing.first_weight,
-            'second_weight': weighing.second_weight,
-            'net_weight': weighing.net_weight,
-            'status': weighing.status,
-            'first_weighing_time': weighing.first_weighing_time,
-            'second_weighing_time': weighing.second_weighing_time
-        } for weighing in weighings]
-
-        return jsonify({
-            'message': 'Filtered weighing records retrieved successfully!',
-            'status_code': 200,
-            'data': weighing_list
-        }), 200
-
-    except BadRequest as e:
-        return jsonify({'message': 'Bad request.', 'error': str(e), 'status_code': 400}), 400
-    except SQLAlchemyError as e:
-        return jsonify({'message': 'Failed to retrieve weighing records.', 'error': str(e), 'status_code': 500}), 500
-    except Exception as e:
-        return jsonify({'message': 'An unexpected error occurred.', 'error': str(e)}), 500
-    
 @weighing_controller.route('/api/weighing/total_waste', methods=['GET'])
-def get_total_waste_per_day():
+def get_total_weighing_per_day():
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
