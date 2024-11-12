@@ -254,11 +254,7 @@ def generate_weighing_pdf(id):
         for detail in details:
             c.drawString(100, y_position, detail)
             y_position -= 20
-
-        y_position -= 40 
-        c.drawString(100, y_position, "Petugas:")
-        c.line(150, y_position - 5, 300, y_position - 5) 
-
+            
         c.showPage()
         c.save()
         pdf_buffer.seek(0)
