@@ -1,8 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-env_path = os.path.join('.env', '.env')
-load_dotenv(dotenv_path=env_path)
+load_dotenv()
 
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
