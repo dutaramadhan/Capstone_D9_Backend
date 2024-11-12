@@ -1,30 +1,21 @@
-# Gunakan base image Python 3.10-slim
-FROM python:3.10-slim
+# Base image
+FROM python:3.9-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Install system dependencies
+RUN apt-get update && apt-get install -y libglib2.0-0
 
-# Tentukan direktori kerja dalam container
+# Set working directory
 WORKDIR /app
 
-# Salin file requirements.txt ke dalam container
-COPY requirements.txt /app/
+# Copy requirements file and install dependencies
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && pip install gunicorn
 
-# Install dependensi yang diperlukan
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy application files and .env
+COPY . .
 
-# Install Gunicorn
-RUN pip install gunicorn
-
-# Salin semua file aplikasi ke direktori kerja dalam container
-COPY . /app/
-
-# Salin file .env ke dalam container
-COPY .env /app/
-
-# Expose port aplikasi (misal 5000 atau 5001 tergantung kebutuhan)
+# Expose the application port
 EXPOSE 5000
 
-# Perintah default untuk menjalankan aplikasi dengan Gunicorn menggunakan worker eventlet
+# Default command to run the application
 CMD ["gunicorn", "-w", "4", "-k", "eventlet", "-b", "0.0.0.0:5000", "app:app"]

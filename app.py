@@ -1,6 +1,5 @@
 from flask import Flask, jsonify
 from config import Config
-from controllers.ocr_controller import ocr_controller
 from controllers.weighing_controller import weighing_controller
 from controllers.login_controller import login_controller
 from controllers.socket_controller import socket_controller, socketio, stop_all_streams
@@ -16,8 +15,7 @@ def create_app():
     CORS(app)
 
     db.init_app(app)
-    
-    app.register_blueprint(ocr_controller)
+
     app.register_blueprint(weighing_controller)
     app.register_blueprint(login_controller)
     app.register_blueprint(socket_controller)
