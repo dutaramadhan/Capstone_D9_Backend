@@ -9,6 +9,8 @@ from reportlab.pdfgen import canvas
 import io
 from sqlalchemy import extract
 
+A5 = A5 = (A4[0] / 2, A4[1] / 2)
+
 weighing_controller = Blueprint('weighing_controller', __name__)
 
 @weighing_controller.route('/api/weighing', methods=['POST'])
@@ -224,37 +226,43 @@ def generate_weighing_pdf(id):
             raise NotFound(f"Weighing record with ID {id} not found.")
 
         pdf_buffer = io.BytesIO()
-        c = canvas.Canvas(pdf_buffer, pagesize=A4)
-        width, height = A4
+        c = canvas.Canvas(pdf_buffer, pagesize=A5)
+        width, height = A5
 
-        c.setFont("Helvetica-Bold", 20)
-        c.drawString(100, height - 80, "TPST Sinduadi")
-        c.setFont("Helvetica", 12)
-        c.drawString(100, height - 100, "Jl. Sinduadi No. 123, Sleman, Yogyakarta")
-        c.drawString(100, height - 115, "Tel: +62 123 456 789 | Email: info@tpstsinduadi.com")
-        c.line(40, height - 125, width - 40, height - 125)
-
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(100, height - 160, "Nota Penimbangan")
         
-        c.setFont("Helvetica", 12)
-        y_position = height - 200
+        c.setFont("Helvetica-Bold", 18)
+        c.drawString(40, height - 40, "TPST Sinduadi")
+        c.setFont("Helvetica", 10)
+        c.drawString(40, height - 60, "Kutu Wates, Kragilan, Sinduadi, Mlati, Sleman")
+        c.drawString(40, height - 75, "Tel: +62 123 456 789 | Email: info@tpstsinduadi.com")
+        c.line(40, height - 85, width - 30, height - 85)
+
+      
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(40, height - 110, "Nota Penimbangan")
+        
+        # Content
+        c.setFont("Helvetica", 10)
+        y_position = height - 130
         details = [
-            f"Nomor Polisi: {weighing.license_plate}",
-            f"Supplier: {weighing.supplier}",
-            f"Supir: {weighing.driver_name}",
-            f"Timbangan Pertama: {weighing.first_weight} kg",
-            f"Timbangan Kedua: {weighing.second_weight or 'N/A'} kg",
-            f"Berat Bersih: {weighing.net_weight or 'N/A'} kg",
-            f"Waktu Penimbangan Pertama: {weighing.first_weighing_time.strftime('%d-%m-%Y %H:%M:%S')}",
-            f"Waktu Penimbangan Kedua: {weighing.second_weighing_time.strftime('%d-%m-%Y %H:%M:%S') if weighing.second_weighing_time else 'N/A'}",
-            f"Catatan: {weighing.notes or '-'}"
+            ("Nomor Polisi", weighing.license_plate),
+            ("Supplier", weighing.supplier),
+            ("Supir", weighing.driver_name),
+            ("Timbangan Pertama", f"{weighing.first_weight} kg"),
+            ("Timbangan Kedua", f"{weighing.second_weight or 'N/A'} kg"),
+            ("Berat Bersih", f"{weighing.net_weight or 'N/A'} kg"),
+            ("Waktu Penimbangan Pertama", weighing.first_weighing_time.strftime('%d-%m-%Y %H:%M:%S')),
+            ("Waktu Penimbangan Kedua", weighing.second_weighing_time.strftime('%d-%m-%Y %H:%M:%S') if weighing.second_weighing_time else 'N/A'),
+            ("Catatan", weighing.notes or '-')
         ]
 
-        for detail in details:
-            c.drawString(100, y_position, detail)
-            y_position -= 20
-            
+        for label, value in details:
+            c.setFont("Helvetica-Bold", 8)
+            c.drawString(40, y_position, f"{label}:")
+            c.setFont("Helvetica", 8)
+            c.drawString(160, y_position, str(value))
+            y_position -= 18
+
         c.showPage()
         c.save()
         pdf_buffer.seek(0)
@@ -270,7 +278,7 @@ def generate_weighing_pdf(id):
         return jsonify({'message': 'Failed to generate PDF.', 'error': str(e), 'status_code': 500}), 500
     except Exception as e:
         return jsonify({'message': 'An unexpected error occurred.', 'error': str(e)}), 500
-
+    
 @weighing_controller.route('/api/weighing/total_waste', methods=['GET'])
 def get_total_weighing_per_day():
     try:

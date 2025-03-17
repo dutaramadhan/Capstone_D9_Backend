@@ -11,3 +11,4 @@ class Config:
     USERNAME = os.getenv('LOGIN_USERNAME')
     PASSWORD = os.getenv('LOGIN_PASSWORD')
     SECRET_KEY = os.getenv('SECRET_KEY')
+    SERIAL_PORT = os.getenv('SERIAL_PORT')
